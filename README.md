@@ -54,7 +54,7 @@
 
 - Druid는 Coordinator, Overlord, Router, Broker, MiddleManager, Historical 로 프로세스가 구성되며, Master, Query, Data로 Server가 구성된다.
 
-![Druid Architecture](./Druid Architecture.png)
+![Druid_Architecture](./Druid_Architecture.png)
 
 
 
@@ -107,7 +107,7 @@
 
 ## 데이터 Flow
 
-![Druid Dataflow](./Druid Dataflow.png)
+![Druid_Dataflow](./Druid_Dataflow.png)
 
 Data 서버의 MiddleManager와 Historical로 신규 유입 데이터 및 파티션 별 데이터가 저장되면, Query 서버의 Broker로 Client Query를 요청 받고 해당 데이터를 사용자에게 전달한다.
 
@@ -126,7 +126,7 @@ Data 서버의 MiddleManager와 Historical로 신규 유입 데이터 및 파티
 
 ## Segment
 
-![Druid segment](./Druid segment.png)
+![Druid_segment](./Druid_segment.png)
 
 segment는 columnar로 구성되며 컬럼 타입은 위와 같다.
 
