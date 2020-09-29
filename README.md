@@ -375,7 +375,27 @@ The CSV `inputFormat` has the following components:
 | findColumnsFromHeader | Boolean    | If this is set, the task will find the column names from the header row. Note that `skipHeaderRows`will be applied before finding column names from the header. For example, if you set `skipHeaderRows` to 2 and `findColumnsFromHeader` to true, the task will skip the first two lines and then extract column information from the third line. `columns` will be ignored if this is set to true. | no (default = false if `columns` is set; otherwise null) |
 | skipHeaderRows        | Integer    | If this is set, the task will skip the first `skipHeaderRows` rows. | no (default = 0)                                         |
 
-### 
+## Spark and Druid
 
+[spark_and_Druid.pdf](https://github.com/SparklineData/spark-druid-olap/blob/master/docs/SparkDruid.pdf)
 
+<img src="./Spark_and_druid.png" alt="Spark_and_druid" style="zoom:67%;" />
 
+- Defining a Druid Data
+
+```sql
+CREATE TEMPORARY TABLE orderLineItemPartSupplier
+				USING org.sparklinedata.druid
+				OPTIONS (sourceDataframe "orderLineItemPartSupplierBase", 
+								timeDimensionColumn "l_shipdate", 
+                druidDatasource "tpch",
+                druidHost "localhost", 
+                druidPort "8082",
+                columnMapping {"l_quantity" : "sum_l_quantity",
+                 							"ps_availqty" : "sum_ps_availqry"}
+                )
+```
+
+Druid Index on this Dataset called **tpch**
+
+the *l_shipdate* column is used as the time dimenson for the index
