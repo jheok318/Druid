@@ -1,7 +1,5 @@
 # Druid
 
-------
-
 ## 목차
 
 1. 개요
@@ -211,7 +209,7 @@ $ pip install pydruid[cli]
 
 - from source
 
-```
+```bash
 $ git clone https://github.com/druid-io/pydruid.git
 $ cd pydruid
 $ python setup.py install
@@ -219,22 +217,165 @@ $ python setup.py install
 
 ## 접속
 
-```
+```python
 from pydruid.client import *
-query = PyDruid(http://localhost:8083, 'druid/v2')
+query = PyDruid(druid_url_goes_here, 'druid/v2')
 ```
 
+## 함수
+
+### timeseries
+
+```python
+ts = query.timeseries(
+    datasource='twitterstream',
+    granularity='day',
+    intervals='2014-02-02/p4w',
+    aggregations={'length': doublesum('tweet_length'), 'count': doublesum('count')},
+    post_aggregations={'avg_tweet_length': (Field('length') / Field('count'))},
+    filter=Dimension('first_hashtag') == 'sochi2014'
+)
+```
+
+### topN
+
+```python
+top = query.topn(
+    datasource='twitterstream',
+    granularity='all',
+    intervals='2014-03-03/p1d',  # utc time of 2014 oscars
+    aggregations={'count': doublesum('count')},
+    dimension='user_mention_name',
+    filter=(Dimension('user_lang') == 'en') & (Dimension('first_hashtag') == 'oscars') &
+           (Dimension('user_time_zone') == 'Pacific Time (US & Canada)') &
+           ~(Dimension('user_mention_name') == 'No Mention'),
+    metric='count',
+    threshold=10
+)
+```
+
+### groupby
+
+```python
+group = query.groupby(
+    datasource='twitterstream',
+    granularity='hour',
+    intervals='2013-10-04/pt12h',
+    dimensions=["user_name", "reply_to_name"],
+    filter=(~(Dimension("reply_to_name") == "Not A Reply")) &
+           (Dimension("user_location") == "California"),
+    aggregations={"count": doublesum("count")}
+)
+```
+
+## DB API
+
+```python
+from pydruid.db import connect
+
+conn = connect(host='localhost', port=8082, path='/druid/v2/sql/', scheme='http')
+curs = conn.cursor()
+curs.execute("""
+    SELECT place,
+           CAST(REGEXP_EXTRACT(place, '(.*),', 1) AS FLOAT) AS lat,
+           CAST(REGEXP_EXTRACT(place, ',(.*)', 1) AS FLOAT) AS lon
+      FROM places
+     LIMIT 10
+""")
+for row in curs:
+    print(row)
+```
+
+## SQL Alchemy
+
+```python
+from sqlalchemy import *
+from sqlalchemy.engine import create_engine
+from sqlalchemy.schema import *
+
+engine = create_engine('druid://localhost:8082/druid/v2/sql/')  # uses HTTP by default :(
+# engine = create_engine('druid+http://localhost:8082/druid/v2/sql/')
+# engine = create_engine('druid+https://localhost:8082/druid/v2/sql/')
+
+places = Table('places', MetaData(bind=engine), autoload=True)
+print(select([func.count('*')], from_obj=places).scalar())
+```
+
+### Column headers
+
+```python
+engine = create_engine('druid://localhost:8082/druid/v2/sql?header=true')
+```
+
+## Command line
+
+```bash
+$ pydruid http://localhost:8082/druid/v2/sql/
+> SELECT COUNT(*) AS cnt FROM places
+  cnt
+-----
+12345
+> SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES;
+TABLE_NAME
+----------
+test_table
+COLUMNS
+SCHEMATA
+TABLES
+> BYE;
+GoodBye!
+```
+
+------
+
+## Input data format
+
+- JSON
+
+```json
+"ioConfig": {
+  "inputFormat": {
+    "type": "json"
+  },
+  ...
+}
 
 
+```
 
+The JSON `inputFormat` has the following components:
 
+| Field       | Type        | Description                                                  | Required |
+| ----------- | ----------- | ------------------------------------------------------------ | -------- |
+| type        | String      | This should say `json`.                                      | yes      |
+| flattenSpec | JSON Object | Specifies flattening configuration for nested JSON data. See [`flattenSpec`](https://druid.apache.org/docs/latest/ingestion/data-formats.html#flattenspec) for more info. | no       |
+| featureSpec | JSON Object | [JSON parser features](https://github.com/FasterXML/jackson-core/wiki/JsonParser-Features) supported by Jackson library. Those features will be applied when parsing the input JSON data. | no       |
 
+### 
 
+- CSV
 
+```json
+"ioConfig": {
+  "inputFormat": {
+    "type": "csv",
+    "columns" : ["timestamp","page","language","user","unpatrolled","newPage","robot","anonymous","namespace","continent","country","region","city","added","deleted","delta"]
+  },
+  ...
+}
+```
 
+The CSV `inputFormat` has the following components:
 
+| Field                 | Type       | Description                                                  | Required                                                 |
+| --------------------- | ---------- | ------------------------------------------------------------ | -------------------------------------------------------- |
+| type                  | String     | This should say `csv`.                                       | yes                                                      |
+| listDelimiter         | String     | A custom delimiter for multi-value dimensions.               | no (default = ctrl+A)                                    |
+| columns               | JSON array | Specifies the columns of the data. The columns should be in the same order with the columns of your data. | yes if `findColumnsFromHeader`is false or missing        |
+| findColumnsFromHeader | Boolean    | If this is set, the task will find the column names from the header row. Note that `skipHeaderRows`will be applied before finding column names from the header. For example, if you set `skipHeaderRows` to 2 and `findColumnsFromHeader` to true, the task will skip the first two lines and then extract column information from the third line. `columns` will be ignored if this is set to true. | no (default = false if `columns` is set; otherwise null) |
+| skipHeaderRows        | Integer    | If this is set, the task will skip the first `skipHeaderRows` rows. | no (default = 0)                                         |
 
-
+### 
 
 
 
